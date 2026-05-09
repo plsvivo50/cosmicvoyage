@@ -1,0 +1,26 @@
+{
+  "type": "cosmicvoyage:moon",
+  "generator": {
+    "type": "minecraft:flat",
+    "settings": {
+      "biome": "minecraft:the_void",
+      "lakes": false,
+      "features": false,
+      "layers": [
+        {
+          "block": "minecraft:bedrock",
+          "height": 1
+        },
+        {
+          "block": "minecraft:stone",
+          "height": 10
+        },
+        {
+          "block": "minecraft:gravel",
+          "height": 2
+        }
+      ],
+      "structure_overrides": []
+    }
+  }
+}

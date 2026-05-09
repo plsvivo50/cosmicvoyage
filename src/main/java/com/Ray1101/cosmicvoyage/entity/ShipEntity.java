@@ -29,7 +29,6 @@ public class ShipEntity extends Entity {
     @Override
     public boolean isControlledByLocalInstance() {
         // 关键：当本地玩家骑乘时，客户端忽略服务端发来的位置同步
-        // 这样服务端 setPos 不会覆盖客户端的本地物理
         Entity passenger = this.getFirstPassenger();
         return this.level().isClientSide && passenger instanceof Player;
     }
@@ -93,9 +92,22 @@ public class ShipEntity extends Entity {
 
     @Override
     public void lerpTo(double x, double y, double z, float yaw, float pitch, int steps, boolean teleport) {
-        this.setPos(x, y, z);
-        this.setYRot(yaw);
-        this.setXRot(pitch);
+        // 100格 = 拒绝所有延迟同步（25格/tick × 4tick延迟 = 100格）
+        // 只有真正的传送（维度切换等）才接受
+        if (teleport || this.distanceToSqr(x, y, z) > 10000.0) {
+            this.setPos(x, y, z);
+            this.setYRot(yaw);
+            this.setXRot(pitch);
+        }
+        // 小幅位置更新：完全忽略，客户端本地物理为准
+    }
+
+    @Override
+    public void absMoveTo(double x, double y, double z, float yaw, float pitch) {
+        // 同上，大幅偏离才接受，堵住 TeleportEntityPacket 路径
+        if (this.distanceToSqr(x, y, z) > 10000.0) {
+            super.absMoveTo(x, y, z, yaw, pitch);
+        }
     }
 
     // ===== 骑乘系统 =====
@@ -120,7 +132,9 @@ public class ShipEntity extends Entity {
 
     @Override
     protected void positionRider(Entity passenger, MoveFunction moveFunction) {
-        // 由 ShipInputHandler 手动同步，这里不做
+        // 无条件同步所有乘客，原版 MoveFunction 内部就是 setPos
+        double offset = passenger instanceof Player ? 0.8 : 0.0;
+        moveFunction.accept(passenger, this.getX(), this.getY() + this.getPassengersRidingOffset() + offset, this.getZ());
     }
 
     @Override

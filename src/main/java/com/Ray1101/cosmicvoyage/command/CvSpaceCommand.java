@@ -118,6 +118,22 @@ public class CvSpaceCommand {
                                     return 1;
                                 })
                         )
+                        .then(Commands.literal("moon")
+                                .executes(context -> {
+                                    ServerPlayer player = context.getSource().getPlayerOrException();
+                                    ServerLevel moonLevel = player.getServer().getLevel(ModDimensions.MOON);
+                                    if (moonLevel == null) {
+                                        context.getSource().sendFailure(Component.literal("Moon dimension not loaded!"));
+                                        return 0;
+                                    }
+                                    player.teleportTo(moonLevel, 0, 70, 0, player.getYRot(), player.getXRot());
+                                    context.getSource().sendSuccess(
+                                            () -> Component.literal("§b[CosmicVoyage] Teleported to Moon."),
+                                            true
+                                    );
+                                    return 1;
+                                })
+                        )
                         .then(
                                 Commands.literal("setanchor")
                                         .executes(context -> {

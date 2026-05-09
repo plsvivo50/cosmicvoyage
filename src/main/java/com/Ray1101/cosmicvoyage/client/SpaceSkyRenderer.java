@@ -54,8 +54,8 @@ public class SpaceSkyRenderer {
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
-        if (!mc.level.dimension().equals(ModDimensions.SPACE)) return;
-
+        if (!mc.level.dimension().equals(ModDimensions.SPACE)
+                && !mc.level.dimension().equals(ModDimensions.MOON)) return;
         initStars();
 
         PoseStack poseStack = event.getPoseStack();

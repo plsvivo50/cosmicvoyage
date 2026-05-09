@@ -29,8 +29,16 @@ public class ShipInputHandler {
                 mc.options.keySprint.isDown()
         );
 
-        // 2. 手动同步玩家位置到飞船（防止乘客脱离）
-        mc.player.setPos(ship.getX(), ship.getY() + 0.8, ship.getZ());
+        // 2. 强制同步玩家位置到飞船（防止 LocalPlayer 网络预测导致脱节）
+        // 直接设置位置，不触发网络同步（LocalPlayer.setPos 客户端不发包）
+        double targetX = ship.getX();
+        double targetY = ship.getY() + 0.8;
+        double targetZ = ship.getZ();
+
+        // 只在有偏差时设置，避免不必要的调用
+        if (mc.player.distanceToSqr(targetX, targetY, targetZ) > 0.01) {
+            mc.player.setPos(targetX, targetY, targetZ);
+        }
 
         // 3. 发自定义网络包到服务端
         CosmicVoyagePacketHandler.INSTANCE.sendToServer(new CosmicVoyagePacketHandler.ShipSyncPacket(ship));
