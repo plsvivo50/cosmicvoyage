@@ -8,12 +8,16 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.common.util.ITeleporter;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
-
+import net.minecraftforge.network.PacketDistributor;
+import java.util.EnumSet;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class CosmicVoyagePacketHandler {
@@ -37,7 +41,6 @@ public class CosmicVoyagePacketHandler {
                 CosmicVoyagePacketHandler::handleShipSync
         );
 
-        // 新增：月球过渡包注册
         INSTANCE.registerMessage(
                 packetId++,
                 MoonTransitionPacket.class,
@@ -96,7 +99,7 @@ public class CosmicVoyagePacketHandler {
         }
     }
 
-    // ===== MoonTransitionPacket（新增）=====
+    // ===== MoonTransitionPacket =====
 
     public static class MoonTransitionPacket {
         public double x, y, z;
@@ -132,39 +135,39 @@ public class CosmicVoyagePacketHandler {
         }
     }
 
-    // ===== ShipSync 服务端处理 =====
+    // ===== ShipSync 服务端处理（已修复安全验证）=====
 
     private static void handleShipSync(ShipSyncPacket pkt, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null) return;
 
-            Level level = player.level();
-            Entity entity = level.getEntity(pkt.entityId);
-            if (!(entity instanceof ShipEntity ship)) return;
+            // ✅ 安全：必须从玩家当前骑乘的实体获取，禁止用 level.getEntity(entityId)
+            if (!(player.getVehicle() instanceof ShipEntity ship)) return;
+            if (ship.getId() != pkt.entityId) return; // 二次校验，防止伪造
 
+            // 距离校验：客户端位置偏离不能太大（防作弊）
             double dx = Math.abs(ship.getX() - pkt.x);
             double dy = Math.abs(ship.getY() - pkt.y);
             double dz = Math.abs(ship.getZ() - pkt.z);
-            if (dx > 1.0 || dy > 1.0 || dz > 1.0) {
-                ship.setPos(pkt.x, pkt.y, pkt.z);
+            if (dx > 10.0 || dy > 10.0 || dz > 10.0) {
+                // 差距太大，拒绝更新，把服务端正确位置发回客户端校正
+                INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), new ShipSyncPacket(ship));
+                return;
             }
+
+            ship.setPos(pkt.x, pkt.y, pkt.z);
             ship.setYRot(pkt.yaw);
             ship.setXRot(pkt.pitch);
             ship.setYHeadRot(pkt.yaw);
-            ship.shipVelocity = new net.minecraft.world.phys.Vec3(pkt.vx, pkt.vy, pkt.vz);
+            ship.shipVelocity = new Vec3(pkt.vx, pkt.vy, pkt.vz);
             ship.setDeltaMovement(ship.shipVelocity);
-
-            if (!ship.getPassengers().isEmpty()) {
-                for (Entity passenger : ship.getPassengers()) {
-                    passenger.setPos(pkt.x, pkt.y + 0.8, pkt.z);
-                }
-            }
+            ship.hasImpulse = true;
         });
         ctx.get().setPacketHandled(true);
     }
 
-    // ===== MoonTransition 服务端处理（新增）=====
+    // ===== MoonTransition 服务端处理（已修复跨维度传送）=====
 
     private static void handleMoonTransition(MoonTransitionPacket pkt,
                                              Supplier<NetworkEvent.Context> ctx) {
@@ -175,22 +178,41 @@ public class CosmicVoyagePacketHandler {
             ServerLevel moonLevel = player.getServer().getLevel(ModDimensions.MOON);
             if (moonLevel == null) return;
 
-            if (player.getVehicle() instanceof ShipEntity ship) {
-                // 传送点改为月球高空 (0, 200, 0)，面朝下
-                ship.teleportTo(moonLevel, 0.0, 200.0, 0.0,
-                        java.util.EnumSet.noneOf(net.minecraft.world.entity.RelativeMovement.class),
-                        pkt.yaw, -90.0f); // pitch = -90 面朝下
+            if (player.getVehicle() instanceof ShipEntity oldShip) {
+                EntityType<?> shipType = oldShip.getType();
+                float yaw = pkt.yaw;
 
+                // 1. 保存旧飞船速度用于月球初速度
+                Vec3 entryVelocity = new Vec3(pkt.vx, pkt.vy, pkt.vz);
+
+                // 2. 先让玩家下船（防止骑乘关系在跨维度时断裂）
+                player.stopRiding();
+
+                // 3. 传送玩家到月球高空
                 player.teleportTo(moonLevel, 0.0, 200.0, 0.0,
-                        java.util.EnumSet.noneOf(net.minecraft.world.entity.RelativeMovement.class),
-                        pkt.yaw, -90.0f);
+                        EnumSet.noneOf(net.minecraft.world.entity.RelativeMovement.class),
+                        yaw, 0.0f);
 
-                // 保留向下的微小速度
-                ship.shipVelocity = new Vec3(0, -0.1, 0);
-                ship.setDeltaMovement(ship.shipVelocity);
+                // 4. 在月球创建新飞船
+                ShipEntity newShip = (ShipEntity) shipType.create(moonLevel);
+                if (newShip == null) return;
+
+                newShip.moveTo(0.0, 200.0, 0.0, yaw, 0.0f);
+                newShip.shipVelocity = entryVelocity.scale(0.5); // 保留部分水平速度
+                newShip.setDeltaMovement(newShip.shipVelocity);
+                newShip.hasImpulse = true;
+
+                // 5. 必须先加到世界，再让玩家骑乘
+                moonLevel.addFreshEntity(newShip);
+                player.startRiding(newShip, true);
+
+                // 6. 销毁旧维度的飞船
+                oldShip.discard();
+
             } else {
+                // 玩家没骑飞船，只传送玩家
                 player.teleportTo(moonLevel, 0.0, 70.0, 0.0,
-                        java.util.EnumSet.noneOf(net.minecraft.world.entity.RelativeMovement.class),
+                        EnumSet.noneOf(net.minecraft.world.entity.RelativeMovement.class),
                         pkt.yaw, 0.0f);
             }
         });

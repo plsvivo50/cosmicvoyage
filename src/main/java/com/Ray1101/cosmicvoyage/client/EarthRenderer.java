@@ -36,8 +36,8 @@ public class EarthRenderer {
 
     // ===== 视觉参数 =====
 
-    /** 地球渲染半径（视觉大小，非物理）。50格 = 适中的视觉大小 */
-    public static final float EARTH_RENDER_RADIUS = 50.0f;
+    /** 地球渲染半径（视觉大小，非物理）。200格 = 适中的视觉大小 */
+    public static final float EARTH_RENDER_RADIUS = 200.0f;
     /** 大气光晕半径比例 */
     public static final float ATMOSPHERE_SCALE = 1.25f;
 

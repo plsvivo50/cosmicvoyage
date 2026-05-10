@@ -18,9 +18,6 @@ public class CvSpaceCommand {
                 Commands.literal("cvspace")
                         .requires(source -> source.hasPermission(2))
 
-                        // =====================
-                        // 根命令：状态输出
-                        // =====================
                         .executes(context -> {
                             context.getSource().sendSuccess(
                                     () -> Component.literal("§b[CosmicVoyage] Space system ready."),
@@ -29,40 +26,31 @@ public class CvSpaceCommand {
                             return 1;
                         })
 
-                        // =====================
-                        // 子命令：tp测试
-                        // =====================
                         .then(Commands.literal("tp")
                                 .executes(ctx -> {
-
                                     ServerPlayer player = ctx.getSource().getPlayer();
                                     if (player == null) return 0;
 
-                                    // 🌌 1. 标记进入太空
                                     SpaceState.enterSpace(player.getUUID());
 
-                                    // 🚀 2. 传送到“临时宇宙点”
                                     player.teleportTo(
                                             player.serverLevel(),
-                                            0,
-                                            200,   // 高空代表“宇宙层”
-                                            0,
+                                            0, 200, 0,
                                             player.getYRot(),
                                             player.getXRot()
                                     );
 
-                                    // 💬 3. 反馈
                                     player.sendSystemMessage(
                                             Component.literal("§b[CosmicVoyage] You have entered space space-state.")
                                     );
-
                                     return 1;
                                 })
                         )
+
                         .then(Commands.literal("enter")
                                 .executes(context -> {
                                     ServerPlayer player = context.getSource().getPlayerOrException();
-                                    ServerLevel spaceLevel = player.server.getLevel(ModDimensions.SPACE);
+                                    ServerLevel spaceLevel = player.getServer().getLevel(ModDimensions.SPACE);
 
                                     if (spaceLevel == null) {
                                         context.getSource().sendFailure(Component.literal("§cSpace dimension not loaded! Is the JSON valid?"));
@@ -74,11 +62,13 @@ public class CvSpaceCommand {
                                         return 0;
                                     }
 
-                                    // 保存返回锚点
-                                    SpaceData.get(player.serverLevel()).setAnchor(player.getX(), player.getY(), player.getZ());
+                                    // 保存返回锚点到当前维度
+                                    SpaceData.get(player.serverLevel()).setAnchor(
+                                            player.getX(), player.getY(), player.getZ()
+                                    );
 
-                                    // 传送到太空维度 (0, 200, 0)
-                                    player.teleportTo(spaceLevel, 0, 200, 0, player.getYRot(), player.getXRot());
+                                    player.teleportTo(spaceLevel, 0, 200, 0,
+                                            player.getYRot(), player.getXRot());
                                     SpaceState.enterSpace(player.getUUID());
 
                                     context.getSource().sendSuccess(
@@ -89,23 +79,27 @@ public class CvSpaceCommand {
                                 })
                         )
 
+                        // ===== /cvspace return（修复版）=====
                         .then(Commands.literal("return")
                                 .executes(context -> {
                                     ServerPlayer player = context.getSource().getPlayerOrException();
 
                                     if (!player.level().dimension().equals(ModDimensions.SPACE)) {
-                                        context.getSource().sendFailure(Component.literal("§cYou are not in space."));
+                                        context.getSource().sendFailure(
+                                                Component.literal("§cYou are not in space."));
                                         return 0;
                                     }
 
-                                    var data = SpaceData.get(player.server.overworld());
+                                    // ✅ 修复：player.server → player.getServer()
+                                    var data = SpaceData.get(player.getServer().overworld());
                                     if (!data.hasAnchor()) {
-                                        context.getSource().sendFailure(Component.literal("§cNo return anchor found."));
+                                        context.getSource().sendFailure(
+                                                Component.literal("§cNo return anchor found."));
                                         return 0;
                                     }
 
                                     player.teleportTo(
-                                            player.server.overworld(),
+                                            player.getServer().overworld(),
                                             data.getX(), data.getY(), data.getZ(),
                                             player.getYRot(), player.getXRot()
                                     );
@@ -118,15 +112,18 @@ public class CvSpaceCommand {
                                     return 1;
                                 })
                         )
+
                         .then(Commands.literal("moon")
                                 .executes(context -> {
                                     ServerPlayer player = context.getSource().getPlayerOrException();
                                     ServerLevel moonLevel = player.getServer().getLevel(ModDimensions.MOON);
                                     if (moonLevel == null) {
-                                        context.getSource().sendFailure(Component.literal("Moon dimension not loaded!"));
+                                        context.getSource().sendFailure(
+                                                Component.literal("Moon dimension not loaded!"));
                                         return 0;
                                     }
-                                    player.teleportTo(moonLevel, 0, 70, 0, player.getYRot(), player.getXRot());
+                                    player.teleportTo(moonLevel, 0, 70, 0,
+                                            player.getYRot(), player.getXRot());
                                     context.getSource().sendSuccess(
                                             () -> Component.literal("§b[CosmicVoyage] Teleported to Moon."),
                                             true
@@ -134,56 +131,43 @@ public class CvSpaceCommand {
                                     return 1;
                                 })
                         )
-                        .then(
-                                Commands.literal("setanchor")
-                                        .executes(context -> {
 
-                                            var player = context.getSource().getPlayerOrException();
-                                            var level = player.serverLevel();
+                        .then(Commands.literal("setanchor")
+                                .executes(context -> {
+                                    var player = context.getSource().getPlayerOrException();
+                                    var data = SpaceData.get(player.serverLevel());
+                                    data.setAnchor(player.getX(), player.getY(), player.getZ());
 
-                                            var data = SpaceData.get(level);
-
-                                            data.setAnchor(player.getX(), player.getY(), player.getZ());
-
-                                            context.getSource().sendSuccess(
-                                                    () -> Component.literal("§aAnchor set!"),
-                                                    false
-                                            );
-
-                                            return 1;
-                                        })
+                                    context.getSource().sendSuccess(
+                                            () -> Component.literal("§aAnchor set!"),
+                                            false
+                                    );
+                                    return 1;
+                                })
                         )
 
-                        .then(
-                                Commands.literal("warp")
-                                        .executes(context -> {
+                        .then(Commands.literal("warp")
+                                .executes(context -> {
+                                    var player = context.getSource().getPlayerOrException();
+                                    var data = SpaceData.get(player.serverLevel());
 
-                                            var player = context.getSource().getPlayerOrException();
-                                            var level = player.serverLevel();
-                                            var data = SpaceData.get(level);
+                                    if (!data.hasAnchor()) {
+                                        context.getSource().sendFailure(
+                                                Component.literal("§cNo anchor set!"));
+                                        return 0;
+                                    }
 
-                                            if (!data.hasAnchor()) {
-                                                context.getSource().sendFailure(
-                                                        Component.literal("§cNo anchor set!")
-                                                );
-                                                return 0;
-                                            }
+                                    player.connection.teleport(
+                                            data.getX(), data.getY(), data.getZ(),
+                                            player.getYRot(), player.getXRot()
+                                    );
 
-                                            player.connection.teleport(
-                                                    data.getX(),
-                                                    data.getY(),
-                                                    data.getZ(),
-                                                    player.getYRot(),
-                                                    player.getXRot()
-                                            );
-
-                                            context.getSource().sendSuccess(
-                                                    () -> Component.literal("§bWarped to anchor."),
-                                                    false
-                                            );
-
-                                            return 1;
-                                        })
+                                    context.getSource().sendSuccess(
+                                            () -> Component.literal("§bWarped to anchor."),
+                                            false
+                                    );
+                                    return 1;
+                                })
                         )
         );
     }
