@@ -1,4 +1,4 @@
-package com.Ray1101.cosmicvoyage.client;
+﻿package com.Ray1101.cosmicvoyage.client;
 
 import com.Ray1101.cosmicvoyage.CosmicVoyage;
 import com.Ray1101.cosmicvoyage.dimension.ModDimensions;
@@ -69,27 +69,39 @@ public class TransitionHandler {
                 }
                 break;
 
-            // TransitionHandler.java - LANDING 状态
+            // LANDING 状态：指向月球中心的垂直下降
             case LANDING:
                 landingTick++;
 
-                // 直接设置速度向量向下，不依赖飞船朝向
-                ship.shipVelocity = new Vec3(0, -0.5, 0); // 匀速下降
-                ship.setXRot(-90.0f); // 视觉：面朝下（纯视觉效果）
+                // 计算指向月球中心的方向向量
+                Vec3 moonCenter = MOON_POSITION;
+                Vec3 toMoon = new Vec3(
+                    moonCenter.x - ship.getX(),
+                    moonCenter.y - ship.getY(),
+                    moonCenter.z - ship.getZ()
+                ).normalize();
 
-                // 每 tick 向下移动
+                // 速度向量指向月球中心（头朝下垂直下降）
+                double landSpeed = 0.5;
+                ship.shipVelocity = toMoon.scale(landSpeed);
+
+                // 设置 targetPitch 让 ShipEntity 自动平滑过渡姿态
+                ship.targetPitch = -90.0f;
+
+                // 每 tick 移动
                 ship.move(net.minecraft.world.entity.MoverType.SELF, ship.shipVelocity);
                 
                 if (landingTick >= LANDING_DURATION) {
                     lastTransitionTime = tick;
                     state = LandingState.IDLE;
+                    ship.targetPitch = 0.0f; // 恢复
 
                     // 发送过渡包到服务端
                     CosmicVoyagePacketHandler.INSTANCE.sendToServer(
                             new CosmicVoyagePacketHandler.MoonTransitionPacket(
                                     ship.getX(), ship.getY(), ship.getZ(),
                                     ship.getYRot(), ship.getXRot(),
-                                    0, -0.1, 0 // 保持向下的微小速度
+                                    toMoon.x * 0.1, toMoon.y * 0.1, toMoon.z * 0.1
                             )
                     );
 

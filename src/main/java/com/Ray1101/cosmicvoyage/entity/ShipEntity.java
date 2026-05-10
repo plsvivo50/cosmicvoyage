@@ -1,4 +1,4 @@
-package com.Ray1101.cosmicvoyage.entity;
+﻿package com.Ray1101.cosmicvoyage.entity;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.InteractionHand;
@@ -9,6 +9,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.util.Mth;
 
 public class ShipEntity extends Entity {
 
@@ -17,6 +18,10 @@ public class ShipEntity extends Entity {
     public static final float DAMPING = 0.015f;
     public static final float MAX_SPEED_TICK = 25.0f;
     public static final float YAW_SPEED = 2.5f;
+    public static final float PITCH_SPEED = 2.0f;
+
+    /** 目标俯仰角（用于着陆姿态平滑过渡） */
+    public float targetPitch = 0.0f;
 
     public Vec3 shipVelocity = Vec3.ZERO;
 
@@ -86,6 +91,50 @@ public class ShipEntity extends Entity {
         // 更新位置
         this.move(net.minecraft.world.entity.MoverType.SELF, shipVelocity);
         this.hasImpulse = true;
+
+        // ===== 姿态自动对齐 =====
+        // 根据速度向量自动调整俯仰（pitch）
+        // 水平飞行时 pitch ≈ 0，垂直向下时 pitch ≈ 90，垂直向上时 pitch ≈ -90
+        alignPitchToVelocity();
+    }
+
+    /**
+     * 根据速度向量自动调整飞船俯仰角度。
+     * 水平速度为主时 pitch → 0，垂直下落时 pitch → 90（机头朝下）。
+     * 使用平滑插值避免突兀变化。
+     */
+    private void alignPitchToVelocity() {
+        double speed = shipVelocity.length();
+        if (speed < 0.01) return; // 静止时不调整
+
+        // 计算速度向量与水平面的夹角
+        Vec3 horizontal = new Vec3(shipVelocity.x, 0, shipVelocity.z);
+        double horizSpeed = horizontal.length();
+        
+        // 根据垂直/水平速度比计算目标 pitch
+        float desiredPitch;
+        if (horizSpeed < 0.01) {
+            // 纯垂直运动
+            desiredPitch = (float)(shipVelocity.y < 0 ? 90.0 : -90.0);
+        } else {
+            double angle = Math.atan2(-shipVelocity.y, horizSpeed);
+            desiredPitch = (float)Math.toDegrees(angle);
+        }
+
+        // 使用 targetPitch 实现平滑过渡
+        // 正常飞行中为0，着陆时由外部设为 -90
+        float pitchDiff = targetPitch - desiredPitch;
+        if (Math.abs(pitchDiff) < 1.0f) {
+            desiredPitch = targetPitch;
+        } else {
+            // 朝 targetPitch 方向靠近，但不越过
+            desiredPitch += Math.signum(pitchDiff) * Math.min(Math.abs(pitchDiff), 0.5f);
+        }
+
+        // 平滑插值当前 pitch 到 desired pitch
+        float currentPitch = this.getXRot();
+        float newPitch = currentPitch + (desiredPitch - currentPitch) * 0.15f;
+        this.setXRot(Mth.clamp(newPitch, -90.0f, 90.0f));
     }
 
     // ===== 禁用原版位置插值 =====
@@ -154,3 +203,5 @@ public class ShipEntity extends Entity {
         t.putDouble("vz", shipVelocity.z);
     }
 }
+
+
