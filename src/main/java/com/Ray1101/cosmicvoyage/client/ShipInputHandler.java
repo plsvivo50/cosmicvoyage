@@ -4,6 +4,7 @@ import com.Ray1101.cosmicvoyage.CosmicVoyage;
 import com.Ray1101.cosmicvoyage.entity.ShipEntity;
 import com.Ray1101.cosmicvoyage.network.CosmicVoyagePacketHandler;
 import net.minecraft.client.Minecraft;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.event.TickEvent;
@@ -15,6 +16,7 @@ public class ShipInputHandler {
 
     private static int syncTick = 0;
     private static final int SYNC_INTERVAL = 3;
+    private static int launchCooldown = 0;
 
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
@@ -23,16 +25,24 @@ public class ShipInputHandler {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || !(mc.player.getVehicle() instanceof ShipEntity ship)) return;
 
+        // === 主世界高度检测：y>=300 自动发射到太空 ===
+        if (mc.level.dimension().equals(Level.OVERWORLD) && mc.player.getY() >= 300.0) {
+            if (launchCooldown <= 0) {
+                launchCooldown = 100; // 5秒冷却（20 ticks/秒）
+                CosmicVoyagePacketHandler.INSTANCE.sendToServer(
+                        new CosmicVoyagePacketHandler.LaunchToSpacePacket()
+                );
+            }
+        }
+        if (launchCooldown > 0) launchCooldown--;
+
         if (ship.isAutoLanding) return;
 
         // === 下降键：Left Ctrl（keySprint）===
-        // Space 被 Forge 视为跳跃键，骑乘时可能触发原版跳跃逻辑
-        // 解决方案：每 tick 强制重置跳跃状态，阻止原版逻辑
         boolean up = mc.options.keyJump.isDown();
         boolean down = mc.options.keySprint.isDown();
 
         if (up) {
-            // 阻止原版 Space 跳跃行为
             mc.player.input.jumping = false;
             mc.player.setJumping(false);
         }
@@ -47,7 +57,7 @@ public class ShipInputHandler {
                 down
         );
 
-        // === 同步玩家位置到飞船（已有，不动）===
+        // === 同步玩家位置到飞船（冻结，不动）===
         double targetX = ship.getX();
         double targetY = ship.getY() + ship.getPassengersRidingOffset() + 0.8;
         double targetZ = ship.getZ();
