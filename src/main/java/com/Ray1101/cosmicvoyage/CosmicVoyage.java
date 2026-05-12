@@ -3,6 +3,9 @@ package com.Ray1101.cosmicvoyage;
 import com.Ray1101.cosmicvoyage.entity.ModEntities;
 import com.Ray1101.cosmicvoyage.network.CosmicVoyagePacketHandler;
 import com.mojang.logging.LogUtils;
+import com.Ray1101.cosmicvoyage.client.SpaceDimensionEffects;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RegisterDimensionSpecialEffectsEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -12,6 +15,7 @@ import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import com.Ray1101.cosmicvoyage.command.CvSpaceCommand;
 import com.Ray1101.cosmicvoyage.command.VT1TestCommand;  // ← 新增导入
+import net.minecraft.resources.ResourceLocation;
 import org.slf4j.Logger;
 import net.minecraftforge.common.MinecraftForge;
 
@@ -44,5 +48,17 @@ public class CosmicVoyage {
     public void onRegisterCommands(RegisterCommandsEvent event) {
         CvSpaceCommand.register(event.getDispatcher());
         VT1TestCommand.register(event.getDispatcher());  // ← 新增这一行
+    }
+
+    // === Issue #9：自定义 DimensionSpecialEffects 注册（客户端）===
+    @Mod.EventBusSubscriber(modid = MOD_ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
+    public static class ClientSetup {
+        @SubscribeEvent
+        public static void onRegisterDimensionEffects(RegisterDimensionSpecialEffectsEvent event) {
+            event.register(
+                    ResourceLocation.fromNamespaceAndPath(MOD_ID, "space"),
+                    new SpaceDimensionEffects()
+            );
+        }
     }
 }
