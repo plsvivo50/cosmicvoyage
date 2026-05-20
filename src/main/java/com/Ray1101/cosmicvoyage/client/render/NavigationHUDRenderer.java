@@ -17,19 +17,31 @@ import net.minecraftforge.fml.common.Mod;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 
+/**
+ * 导航 HUD 渲染器 — 在太空维度显示远处天体的方向指示器。
+ *
+ * <p>Phase 2：新增火星导航目标。
+ * 同时，引用 MarsRenderer.MARS_POSITION 确保 MarsRenderer 类被 JVM 加载，
+ * 其 @Mod.EventBusSubscriber 事件注册生效。
+ */
 @Mod.EventBusSubscriber(modid = CosmicVoyage.MOD_ID, value = Dist.CLIENT)
 public class NavigationHUDRenderer {
 
     public static final float MARGIN = 30.0f;
     public static final float ARROW_SIZE = 14.0f;
 
+    // Phase 2：新增火星导航目标
+    // 引用 MarsRenderer.MARS_POSITION 确保 MarsRenderer 类被加载
     private static final NavTarget[] TARGETS = {
             new NavTarget("Earth", EarthRenderer.EARTH_POSITION,
                     600.0, 2000.0,
                     0.25f, 0.50f, 1.0f),
-            new NavTarget("Moon",  MoonRenderer.MOON_POSITION,
+            new NavTarget("Moon", MoonRenderer.MOON_POSITION,
                     600.0, 800.0,
-                    0.70f, 0.70f, 0.75f)
+                    0.70f, 0.70f, 0.75f),
+            new NavTarget("Mars", MarsRenderer.MARS_POSITION,          // Phase 2：火星
+                    800.0, 2500.0,                                    // closeDist/farDist 比地球大（行星尺度）
+                    0.90f, 0.35f, 0.15f)                               // 橙红色
     };
 
     @SubscribeEvent

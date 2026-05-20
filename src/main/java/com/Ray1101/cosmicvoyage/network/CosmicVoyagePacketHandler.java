@@ -1,11 +1,7 @@
 package com.Ray1101.cosmicvoyage.network;
 
 import com.Ray1101.cosmicvoyage.CosmicVoyage;
-import com.Ray1101.cosmicvoyage.network.packet.LandOnEarthPacket;
-import com.Ray1101.cosmicvoyage.network.packet.LaunchToSpacePacket;
-import com.Ray1101.cosmicvoyage.network.packet.MoonTransitionPacket;
-import com.Ray1101.cosmicvoyage.network.packet.ReturnToSpacePacket;
-import com.Ray1101.cosmicvoyage.network.packet.ShipSyncPacket;
+import com.Ray1101.cosmicvoyage.network.packet.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
@@ -18,8 +14,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
  *   - 不处理任何 Packet 的编解码或业务逻辑
  *   - 每个 Packet 的 encode/decode/handle 自包含在各自文件中（P0-5）
  *
- * <p>拆分历史：原文件 291 行，包含 3 个 Packet 定义 + 3 个 Handler。
- * P0-5 拆分为独立文件后，本文件缩减到 ~60 行。
+ * <p>Phase 2：新增 MarsLandingPacket 和 MarsEscapePacket 注册。
  */
 public class CosmicVoyagePacketHandler {
 
@@ -72,6 +67,23 @@ public class CosmicVoyagePacketHandler {
                 ReturnToSpacePacket::encode,
                 ReturnToSpacePacket::decode,
                 ReturnToSpacePacket::handle
+        );
+
+        // Phase 2：火星着陆 + 返回
+        INSTANCE.registerMessage(
+                packetId++,
+                MarsLandingPacket.class,
+                MarsLandingPacket::encode,
+                MarsLandingPacket::decode,
+                MarsLandingPacket::handle
+        );
+
+        INSTANCE.registerMessage(
+                packetId++,
+                MarsEscapePacket.class,
+                MarsEscapePacket::encode,
+                MarsEscapePacket::decode,
+                MarsEscapePacket::handle
         );
     }
 }

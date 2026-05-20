@@ -1,0 +1,26 @@
+{
+  "type": "cosmicvoyage:mars",
+  "generator": {
+    "type": "minecraft:flat",
+    "settings": {
+      "biome": "minecraft:the_void",
+      "lakes": false,
+      "features": false,
+      "layers": [
+        {
+          "block": "minecraft:bedrock",
+          "height": 1
+        },
+        {
+          "block": "minecraft:red_sandstone",
+          "height": 8
+        },
+        {
+          "block": "minecraft:coarse_dirt",
+          "height": 2
+        }
+      ],
+      "structure_overrides": []
+    }
+  }
+}

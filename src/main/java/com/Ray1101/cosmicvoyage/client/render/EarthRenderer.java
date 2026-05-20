@@ -15,17 +15,19 @@ import net.minecraftforge.fml.common.Mod;
  *
  * <p>所有渲染逻辑已移至 {@link CelestialBodyRenderer}，
  * 此类只负责提供地球特有的 {@link CelestialBodyRenderer.Config} 参数。
+ *
+ * <p>Phase 2 更新：EARTH_POSITION 改为引用 SpaceConstants.EARTH_POSITION（已移至 10000, 0, 0）。
  */
 @Mod.EventBusSubscriber(modid = CosmicVoyage.MOD_ID, value = Dist.CLIENT)
 public class EarthRenderer {
 
-    /** 地球在太空维度中的固定位置 */
-    public static final Vec3 EARTH_POSITION = new Vec3(0, 0, 0);
+    /** 地球在太空维度中的固定位置 — Phase 2：太阳在原点 (0,0,0)，地球在 (10000, 0, 0) */
+    public static final Vec3 EARTH_POSITION = SpaceConstants.EARTH_POSITION;
 
     private static final CelestialBodyRenderer RENDERER = new CelestialBodyRenderer(
             new CelestialBodyRenderer.Config(
                     "Earth",                              // name
-                    EARTH_POSITION,                       // position
+                    EARTH_POSITION,                       // position (10000, 0, 0)
                     SpaceConstants.EARTH_RENDER_RADIUS,   // renderRadius
                     30.0,                                 // minRenderDist
                     new float[]{0.12f, 0.30f, 0.72f},    // colorBody (海洋蓝)

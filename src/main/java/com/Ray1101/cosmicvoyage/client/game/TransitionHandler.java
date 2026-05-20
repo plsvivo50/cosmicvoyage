@@ -5,9 +5,7 @@ import com.Ray1101.cosmicvoyage.SpaceConstants;
 import com.Ray1101.cosmicvoyage.dimension.ModDimensions;
 import com.Ray1101.cosmicvoyage.entity.ShipEntity;
 import com.Ray1101.cosmicvoyage.network.CosmicVoyagePacketHandler;
-import com.Ray1101.cosmicvoyage.network.packet.LandOnEarthPacket;
-import com.Ray1101.cosmicvoyage.network.packet.MoonTransitionPacket;
-import com.Ray1101.cosmicvoyage.network.packet.ReturnToSpacePacket;
+import com.Ray1101.cosmicvoyage.network.packet.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
@@ -19,13 +17,16 @@ import net.minecraftforge.fml.common.Mod;
  * 过渡触发器 — 客户端距离/高度检测，自动触发维度切换。
  *
  * <p>职责：
- *   - 在太空维度：检测与月球的距离（月球着陆）和与地球的距离（返回地球）
+ *   - 在太空维度：检测与月球/火星的距离（着陆）和与地球的距离（返回地球）
  *   - 在月球维度：检测 y 坐标（返回太空）
+ *   - 在火星维度：检测 y 坐标（返回太空）
  *   - 冷却时间防止重复触发
  *
- * <p>设计决策：不强制要求骑乘飞船。
- *   所有在太空/月球维度的玩家都进行检测，
- *   骑飞船时传送飞船，不骑飞船时只传送玩家。
+ * <p>Phase 2 更新：
+ *   - EARTH_POSITION 改为引用 SpaceConstants.EARTH_POSITION
+ *   - MOON_ESCAPE_HEIGHT 改为引用 SpaceConstants.MOON_ESCAPE_HEIGHT
+ *   - 新增火星检测：MARS_POSITION, TRIGGER_LAND_MARS, MARS_ESCAPE_HEIGHT
+ *   - 所有坐标统一从 SpaceConstants 读取，消除硬编码
  */
 @Mod.EventBusSubscriber(modid = CosmicVoyage.MOD_ID, value = Dist.CLIENT)
 public class TransitionHandler {
@@ -37,13 +38,19 @@ public class TransitionHandler {
     public static final double TRIGGER_LAND_MOON = SpaceConstants.TRIGGER_LAND_MOON;
 
     // 地球位置和触发距离
-    public static final Vec3 EARTH_POSITION = new Vec3(0.0, 0.0, 0.0);
+    public static final Vec3 EARTH_POSITION = SpaceConstants.EARTH_POSITION;
     public static final double TRIGGER_LAND_EARTH = SpaceConstants.TRIGGER_LAND_EARTH;
 
-    // ===== 月球维度检测 =====
+    // Phase 2：火星位置和触发距离
+    public static final Vec3 MARS_POSITION = SpaceConstants.MARS_POSITION;
+    public static final double TRIGGER_LAND_MARS = SpaceConstants.TRIGGER_LAND_MARS;
 
-    // 月球返回太空的 y 阈值
-    public static final double MOON_ESCAPE_HEIGHT = ReturnToSpacePacket.MOON_ESCAPE_HEIGHT;
+    // ===== 月球/火星维度检测 =====
+
+    public static final double MOON_ESCAPE_HEIGHT = SpaceConstants.MOON_ESCAPE_HEIGHT;
+
+    // Phase 2：火星返回阈值
+    public static final double MARS_ESCAPE_HEIGHT = SpaceConstants.MARS_ESCAPE_HEIGHT;
 
     private static long lastTransitionTime = 0;
     private static final long COOLDOWN = 100;
@@ -58,7 +65,7 @@ public class TransitionHandler {
         long tick = mc.level.getGameTime();
         if (tick - lastTransitionTime < COOLDOWN) return;
 
-        // ===== 太空维度：月球着陆 + 地球返回 =====
+        // ===== 太空维度：月球着陆 + 火星着陆 + 地球返回 =====
         if (mc.level.dimension().equals(ModDimensions.SPACE)) {
             handleSpaceDimension(mc, tick);
             return;
@@ -67,13 +74,34 @@ public class TransitionHandler {
         // ===== 月球维度：返回太空 =====
         if (mc.level.dimension().equals(ModDimensions.MOON)) {
             handleMoonDimension(mc, tick);
+            return;
+        }
+
+        // Phase 2：火星维度：返回太空
+        if (mc.level.dimension().equals(ModDimensions.MARS)) {
+            handleMarsDimension(mc, tick);
         }
     }
 
     /**
-     * 太空维度处理：检测月球和地球的距离。
+     * 太空维度处理：检测月球、火星和地球的距离。
      */
     private static void handleSpaceDimension(Minecraft mc, long tick) {
+        // 检测火星着陆（Phase 2：优先检测，火星比月球更远）
+        double marsDist = Math.sqrt(mc.player.distanceToSqr(
+                MARS_POSITION.x, MARS_POSITION.y, MARS_POSITION.z));
+
+        if (marsDist < TRIGGER_LAND_MARS) {
+            lastTransitionTime = tick;
+            mc.player.sendSystemMessage(
+                    net.minecraft.network.chat.Component.literal(
+                            "\u00a7c[CosmicVoyage] Approaching Mars. Initiating landing sequence...")
+            );
+
+            sendLandingPacket(mc, ModDimensions.MARS, SpaceConstants.MARS_ENTRY_POS);
+            return;
+        }
+
         // 检测月球着陆
         double moonDist = Math.sqrt(mc.player.distanceToSqr(
                 MOON_POSITION.x, MOON_POSITION.y, MOON_POSITION.z));
@@ -85,23 +113,7 @@ public class TransitionHandler {
                             "\u00a7b[CosmicVoyage] Initiating lunar landing...")
             );
 
-            if (mc.player.getVehicle() instanceof ShipEntity ship) {
-                CosmicVoyagePacketHandler.INSTANCE.sendToServer(
-                        new MoonTransitionPacket(
-                                ship.getX(), ship.getY(), ship.getZ(),
-                                ship.getYRot(), ship.getXRot(),
-                                0, -0.1, 0
-                        )
-                );
-            } else {
-                CosmicVoyagePacketHandler.INSTANCE.sendToServer(
-                        new MoonTransitionPacket(
-                                mc.player.getX(), mc.player.getY(), mc.player.getZ(),
-                                mc.player.getYRot(), mc.player.getXRot(),
-                                0, -0.1, 0
-                        )
-                );
-            }
+            sendLandingPacket(mc, ModDimensions.MOON, SpaceConstants.MOON_ENTRY_POS);
             return;
         }
 
@@ -133,5 +145,63 @@ public class TransitionHandler {
         );
 
         CosmicVoyagePacketHandler.INSTANCE.sendToServer(new ReturnToSpacePacket());
+    }
+
+    /**
+     * Phase 2：火星维度处理：检测 y 坐标，达到阈值时返回太空。
+     */
+    private static void handleMarsDimension(Minecraft mc, long tick) {
+        if (mc.player.getY() < MARS_ESCAPE_HEIGHT) return;
+
+        lastTransitionTime = tick;
+        mc.player.sendSystemMessage(
+                net.minecraft.network.chat.Component.literal(
+                        "\u00a7c[CosmicVoyage] Leaving Mars atmosphere. Returning to space...")
+        );
+
+        CosmicVoyagePacketHandler.INSTANCE.sendToServer(new MarsEscapePacket());
+    }
+
+    /**
+     * 辅助方法：根据目标维度发送对应的着陆 Packet。
+     */
+    private static void sendLandingPacket(Minecraft mc, net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> targetDim, Vec3 entryPos) {
+        if (mc.player.getVehicle() instanceof ShipEntity ship) {
+            if (targetDim.equals(ModDimensions.MOON)) {
+                CosmicVoyagePacketHandler.INSTANCE.sendToServer(
+                        new MoonTransitionPacket(
+                                ship.getX(), ship.getY(), ship.getZ(),
+                                ship.getYRot(), ship.getXRot(),
+                                0, -0.1, 0
+                        )
+                );
+            } else if (targetDim.equals(ModDimensions.MARS)) {
+                CosmicVoyagePacketHandler.INSTANCE.sendToServer(
+                        new MarsLandingPacket(
+                                ship.getX(), ship.getY(), ship.getZ(),
+                                ship.getYRot(), ship.getXRot(),
+                                0, -0.1, 0
+                        )
+                );
+            }
+        } else {
+            if (targetDim.equals(ModDimensions.MOON)) {
+                CosmicVoyagePacketHandler.INSTANCE.sendToServer(
+                        new MoonTransitionPacket(
+                                mc.player.getX(), mc.player.getY(), mc.player.getZ(),
+                                mc.player.getYRot(), mc.player.getXRot(),
+                                0, -0.1, 0
+                        )
+                );
+            } else if (targetDim.equals(ModDimensions.MARS)) {
+                CosmicVoyagePacketHandler.INSTANCE.sendToServer(
+                        new MarsLandingPacket(
+                                mc.player.getX(), mc.player.getY(), mc.player.getZ(),
+                                mc.player.getYRot(), mc.player.getXRot(),
+                                0, -0.1, 0
+                        )
+                );
+            }
+        }
     }
 }

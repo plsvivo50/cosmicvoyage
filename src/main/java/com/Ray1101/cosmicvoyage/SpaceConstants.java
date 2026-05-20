@@ -13,6 +13,11 @@ import net.minecraft.world.phys.Vec3;
  *
  * <p>5月11日教训：基于虚拟机文件做常量重构导致引用混乱。
  * 本次常量系统基于实际代码推导，所有值可数学验证。
+ *
+ * <p>Phase 2 更新：
+ *   - 地球坐标从 (0, 0, 0) 移至 (10000, 0, 0)，太阳在原点
+ *   - SPACE_ENTRY_POS 改为基于 EARTH_POSITION 的相对偏移
+ *   - 火星参数预占位（比例推导，非硬编码）
  */
 public final class SpaceConstants {
 
@@ -27,13 +32,35 @@ public final class SpaceConstants {
     /** 地球大气层渲染半径，用于大气效果渲染。 */
     public static final float EARTH_ATMOSPHERE_RADIUS = EARTH_RADIUS * 1.2f; // 240.0f
 
-    // ===== 月球参数（比例：1/4 地球） =====
+    // ===== 地球坐标（Phase 2：移至 10000，太阳在原点） =====
+    /** 地球在太空维度中的固定位置。太阳在 (0, 0, 0)，地球在 (10000, 0, 0)。 */
+    public static final Vec3 EARTH_POSITION = new Vec3(10000.0, 0.0, 0.0);
+
+    // ===== 月球参数（比例：1/4 地球，相对地球 +2000） =====
     /** 月球物理半径，用于 MoonRenderer 和着陆触发检测。 */
     public static final float MOON_RADIUS = EARTH_RADIUS * 0.25f;           // 50.0f
     /** 月球渲染半径，用于 MoonRenderer 可视化。 */
     public static final float MOON_RENDER_RADIUS = MOON_RADIUS;             // 50.0f
-    /** 月球在太空坐标系中的水平距离。 */
+    /** 月球在太空坐标系中的水平距离（地球 + 2000）。 */
     public static final float MOON_DISTANCE = 12000.0f;
+
+    // ===== 火星参数（Phase 2 预占位，比例推导） =====
+    /** 火星半径 = 1/2 地球（视觉效果比月球大，体现行星尺度）。 */
+    public static final float MARS_RADIUS = EARTH_RADIUS * 0.5f;            // 100.0f
+    /** 火星渲染半径。 */
+    public static final float MARS_RENDER_RADIUS = MARS_RADIUS;             // 100.0f
+    /** 火星在太空坐标系中的位置（距地球 +5000）。 */
+    public static final Vec3 MARS_POSITION = new Vec3(15000.0, 0.0, 0.0);
+    /** 火星维度 y 坐标达到此值时自动返回太空。 */
+    public static final double MARS_ESCAPE_HEIGHT = 200.0;
+    /** 火星着陆触发距离（3D），大于此距离不会触发火星着陆。 */
+    public static final float TRIGGER_LAND_MARS = MARS_RADIUS * 4.0f;       // 400.0f
+    /** 火星进入坐标（表面上方 100 格）。 */
+    public static final Vec3 MARS_ENTRY_POS = new Vec3(
+            MARS_POSITION.x,                                                // 15000.0
+            MARS_RADIUS + 100.0f,                                           // 200.0f
+            MARS_POSITION.z                                                 // 0.0
+    );
 
     // ===== 维度切换参数 =====
     /** 传送后速度缩放因子（维度切换后保留的速度比例） */
@@ -77,13 +104,13 @@ public final class SpaceConstants {
     /** 月球着陆触发距离（3D），大于此距离不会触发月球着陆。 */
     public static final float TRIGGER_LAND_MOON = MOON_RADIUS * 4.0f;       // 200.0f
 
-    // ===== 太空进入坐标（数学上不可能触发着陆） =====
-    // 缓冲设计：3D 距离 = sqrt(y² + z²) 必须 > TRIGGER_LAND_EARTH + 安全余量
-    // (0, 400, -1200) → 3D 距离 ≈ 1265 > 800，水平缓冲 507 格
+    // ===== 太空进入坐标（基于 EARTH_POSITION 的相对偏移） =====
+    // 数学验证：3D 距地球 = sqrt(y_offset² + z_offset²) = sqrt(400² + 1200²) ≈ 1265 > TRIGGER_LAND_EARTH
+    // 即使 EARTH_POSITION 改变，只要相对偏移不变，就不会触发死循环
     public static final Vec3 SPACE_ENTRY_POS = new Vec3(
-            0.0,
-            EARTH_RADIUS + 200.0f,                          // 400.0f — 高于地球表面
-            -(EARTH_RADIUS + TRIGGER_LAND_EARTH + 200.0f)   // -1200.0f — 距离地球 > 触发阈值+余量
+            EARTH_POSITION.x,                                      // 跟随地球 x
+            EARTH_POSITION.y + EARTH_RADIUS + 200.0f,              // 400.0f — 高于地球表面
+            EARTH_POSITION.z - (EARTH_RADIUS + TRIGGER_LAND_EARTH + 200.0f)  // -1200.0f — 距离地球 > 触发阈值+余量
     );
 
     // ===== 月球进入坐标 =====

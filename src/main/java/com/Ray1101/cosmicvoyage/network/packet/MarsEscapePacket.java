@@ -16,53 +16,40 @@ import java.util.EnumSet;
 import java.util.function.Supplier;
 
 /**
- * 返回太空数据包 — 从月球维度 y≥阈值 自动触发传送到太空。
+ * 火星返回太空数据包 — 从火星维度 y≥阈值 自动触发传送到太空。
  *
- * <p>触发条件：玩家在月球维度骑乘飞船，y 坐标 ≥ MOON_ESCAPE_HEIGHT。
- * <p>职责：将玩家+飞船从月球传送到太空安全坐标。
- *
- * <p>Phase 2 更新：删除本地 MOON_ESCAPE_HEIGHT 重复定义，统一引用 SpaceConstants。
+ * <p>触发条件：玩家在火星维度骑乘飞船，y 坐标 ≥ MARS_ESCAPE_HEIGHT。
+ * <p>职责：将玩家+飞船从火星传送到太空安全坐标。
  */
-public class ReturnToSpacePacket {
+public class MarsEscapePacket {
 
-    // Phase 2：删除本地硬编码，统一使用 SpaceConstants.MOON_ESCAPE_HEIGHT
-    // 消除重复定义，确保所有代码引用同一常量
+    public MarsEscapePacket() {}
 
-    public ReturnToSpacePacket() {}
-
-    public static void encode(ReturnToSpacePacket pkt, FriendlyByteBuf buf) {
+    public static void encode(MarsEscapePacket pkt, FriendlyByteBuf buf) {
         // 空包，无数据
     }
 
-    public static ReturnToSpacePacket decode(FriendlyByteBuf buf) {
-        return new ReturnToSpacePacket();
+    public static MarsEscapePacket decode(FriendlyByteBuf buf) {
+        return new MarsEscapePacket();
     }
 
-    /**
-     * 服务端处理：将玩家和飞船从月球传送到太空。
-     *
-     * <p>流程：
-     *   1. 保存月球锚点（P0-2：使用 setMoonAnchor）
-     *   2. 传送玩家+飞船到太空安全坐标（P0-6：使用 SpaceConstants.SPACE_ENTRY_POS）
-     *   3. 注册玩家在太空的状态
-     */
-    public static void handle(ReturnToSpacePacket pkt, Supplier<NetworkEvent.Context> ctx) {
+    public static void handle(MarsEscapePacket pkt, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null) return;
 
-            // 验证当前在月球维度
-            if (!player.level().dimension().equals(ModDimensions.MOON)) return;
+            // 验证当前在火星维度
+            if (!player.level().dimension().equals(ModDimensions.MARS)) return;
 
             ServerLevel spaceLevel = player.getServer().getLevel(ModDimensions.SPACE);
             if (spaceLevel == null) return;
 
-            // P0-2：保存月球锚点
-            SpaceData.get(player.serverLevel()).setMoonAnchor(
+            // 保存火星锚点
+            SpaceData.get(player.serverLevel()).setMarsAnchor(
                     player.getX(), player.getY(), player.getZ()
             );
 
-            // P0-6：使用 SpaceConstants 推导的太空进入坐标
+            // 使用 SpaceConstants 推导的太空进入坐标
             double entryX = SpaceConstants.SPACE_ENTRY_POS.x;
             double entryY = SpaceConstants.SPACE_ENTRY_POS.y;
             double entryZ = SpaceConstants.SPACE_ENTRY_POS.z;

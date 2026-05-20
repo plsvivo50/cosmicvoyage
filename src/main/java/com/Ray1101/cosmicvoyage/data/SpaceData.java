@@ -8,7 +8,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
 
 /**
- * 太空数据持久化 — 双锚点系统（地球 + 月球）
+ * 太空数据持久化 — 三锚点系统（地球 + 月球 + 火星）
  *
  * <p>职责边界：
  *   - 只负责锚点数据的序列化/反序列化
@@ -18,10 +18,11 @@ import net.minecraft.world.level.saveddata.SavedData;
  * <p>NBT 版本演进：
  *   - v1（旧）: anchorX/Y/Z + hasAnchor（单锚点，默认地球）
  *   - v2（当前）: earthAnchor + moonAnchor 双锚点，DATA_VERSION 字段
+ *   - v3（Phase 2）: + marsAnchor 火星锚点
  */
 public class SpaceData extends SavedData {
 
-    private static final int DATA_VERSION = 2;
+    private static final int DATA_VERSION = 3;
     private static final String KEY_VERSION = "DataVersion";
 
     // ===== 地球锚点 =====
@@ -46,6 +47,17 @@ public class SpaceData extends SavedData {
     private double moonAnchorZ;
     private boolean hasMoonAnchor = false;
 
+    // ===== 火星锚点（Phase 2）=====
+    private static final String KEY_HAS_MARS_ANCHOR = "HasMarsAnchor";
+    private static final String KEY_MARS_ANCHOR_X = "MarsAnchorX";
+    private static final String KEY_MARS_ANCHOR_Y = "MarsAnchorY";
+    private static final String KEY_MARS_ANCHOR_Z = "MarsAnchorZ";
+
+    private double marsAnchorX;
+    private double marsAnchorY;
+    private double marsAnchorZ;
+    private boolean hasMarsAnchor = false;
+
     // ======================
     // 创建 / 加载实例
     // ======================
@@ -64,7 +76,7 @@ public class SpaceData extends SavedData {
         int version = tag.contains(KEY_VERSION) ? tag.getInt(KEY_VERSION) : 1;
 
         if (version == 1) {
-            // v1 → v2 自动迁移：旧 anchorX/Y/Z 迁移到 earthAnchor
+            // v1 → v3 自动迁移：旧 anchorX/Y/Z 迁移到 earthAnchor
             if (tag.contains("HasAnchor") && tag.getBoolean("HasAnchor")) {
                 data.earthAnchorX = tag.getDouble("AnchorX");
                 data.earthAnchorY = tag.getDouble("AnchorY");
@@ -72,7 +84,7 @@ public class SpaceData extends SavedData {
                 data.hasEarthAnchor = true;
             }
         } else {
-            // v2 正常加载
+            // v2/v3 正常加载
             data.hasEarthAnchor = tag.getBoolean(KEY_HAS_EARTH_ANCHOR);
             if (data.hasEarthAnchor) {
                 data.earthAnchorX = tag.getDouble(KEY_EARTH_ANCHOR_X);
@@ -85,6 +97,16 @@ public class SpaceData extends SavedData {
                 data.moonAnchorX = tag.getDouble(KEY_MOON_ANCHOR_X);
                 data.moonAnchorY = tag.getDouble(KEY_MOON_ANCHOR_Y);
                 data.moonAnchorZ = tag.getDouble(KEY_MOON_ANCHOR_Z);
+            }
+
+            // v3：加载火星锚点（v2 存档此字段不存在，默认为 false）
+            if (version >= 3) {
+                data.hasMarsAnchor = tag.getBoolean(KEY_HAS_MARS_ANCHOR);
+                if (data.hasMarsAnchor) {
+                    data.marsAnchorX = tag.getDouble(KEY_MARS_ANCHOR_X);
+                    data.marsAnchorY = tag.getDouble(KEY_MARS_ANCHOR_Y);
+                    data.marsAnchorZ = tag.getDouble(KEY_MARS_ANCHOR_Z);
+                }
             }
         }
 
@@ -111,6 +133,14 @@ public class SpaceData extends SavedData {
             tag.putDouble(KEY_MOON_ANCHOR_X, moonAnchorX);
             tag.putDouble(KEY_MOON_ANCHOR_Y, moonAnchorY);
             tag.putDouble(KEY_MOON_ANCHOR_Z, moonAnchorZ);
+        }
+
+        // Phase 2：火星锚点
+        tag.putBoolean(KEY_HAS_MARS_ANCHOR, hasMarsAnchor);
+        if (hasMarsAnchor) {
+            tag.putDouble(KEY_MARS_ANCHOR_X, marsAnchorX);
+            tag.putDouble(KEY_MARS_ANCHOR_Y, marsAnchorY);
+            tag.putDouble(KEY_MARS_ANCHOR_Z, marsAnchorZ);
         }
 
         return tag;
@@ -171,6 +201,35 @@ public class SpaceData extends SavedData {
 
     public void clearMoonAnchor() {
         this.hasMoonAnchor = false;
+        setDirty();
+    }
+
+    // ======================
+    // 火星锚点 API（Phase 2）
+    // ======================
+
+    public void setMarsAnchor(double x, double y, double z) {
+        this.marsAnchorX = x;
+        this.marsAnchorY = y;
+        this.marsAnchorZ = z;
+        this.hasMarsAnchor = true;
+        setDirty();
+    }
+
+    public boolean hasMarsAnchor() {
+        return hasMarsAnchor;
+    }
+
+    public double getMarsX() { return marsAnchorX; }
+    public double getMarsY() { return marsAnchorY; }
+    public double getMarsZ() { return marsAnchorZ; }
+
+    public BlockPos getMarsAnchor() {
+        return hasMarsAnchor ? new BlockPos((int) marsAnchorX, (int) marsAnchorY, (int) marsAnchorZ) : null;
+    }
+
+    public void clearMarsAnchor() {
+        this.hasMarsAnchor = false;
         setDirty();
     }
 

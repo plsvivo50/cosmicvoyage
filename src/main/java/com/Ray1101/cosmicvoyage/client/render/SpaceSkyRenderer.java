@@ -1,11 +1,15 @@
 package com.Ray1101.cosmicvoyage.client.render;
 
+import com.Ray1101.cosmicvoyage.CosmicVoyage;
+import com.Ray1101.cosmicvoyage.dimension.ModDimensions;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GameRenderer;
+import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 import org.joml.Matrix4f;
 
 import java.util.ArrayList;
@@ -17,7 +21,13 @@ import java.util.Random;
  *
  * <p>星星参数（大小、亮度、位置）从匿名 float[5] 数组改为命名的 {@link Star} 记录，
  * 消除魔法数字索引（star[0]=x, star[3]=size 等），提升可读性和类型安全。
+ *
+ * <p>BugFix: 添加缺失的 @Mod.EventBusSubscriber 注册注解和维度检查。
+ * 之前因缺少注册导致 onRenderLevelStage 永远不会被调用，太空维度星空不显示。
+ *
+ * <p>Phase 2: 维度检查加入 MARS，火星维度也显示星空。
  */
+@Mod.EventBusSubscriber(modid = CosmicVoyage.MOD_ID, value = Dist.CLIENT)
 public class SpaceSkyRenderer {
 
     // ===== P2-2: 星星配置常量 =====
@@ -64,8 +74,16 @@ public class SpaceSkyRenderer {
     @SubscribeEvent
     public static void onRenderLevelStage(RenderLevelStageEvent event) {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_SKY) return;
+
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
+
+        // Phase 2: 维度检查 — 太空/月球/火星维度都渲染星空
+        if (!mc.level.dimension().equals(ModDimensions.SPACE)
+                && !mc.level.dimension().equals(ModDimensions.MOON)
+                && !mc.level.dimension().equals(ModDimensions.MARS)) {
+            return;
+        }
 
         initStars();
 
