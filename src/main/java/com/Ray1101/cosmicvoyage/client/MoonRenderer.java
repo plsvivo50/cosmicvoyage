@@ -14,6 +14,8 @@ import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.joml.Matrix4f;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 月球缩略球渲染器
@@ -27,6 +29,8 @@ import org.joml.Matrix4f;
  */
 @Mod.EventBusSubscriber(modid = CosmicVoyage.MOD_ID, value = Dist.CLIENT)
 public class MoonRenderer {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(MoonRenderer.class);
 
     /** 月球在太空维度中的固定位置 */
     public static final Vec3 MOON_POSITION = new Vec3(12000, 0, 0);
@@ -64,8 +68,7 @@ public class MoonRenderer {
 
         // 进入轨道日志
         if (mc.level.getGameTime() % 20 == 0 && dist < LOD_NEAR) {
-            System.out.println("[CosmicVoyage][Moon] Approaching Moon! Distance: "
-                    + String.format("%.1f", dist));
+            LOGGER.info("{}[Moon] Approaching Moon! Distance: {}", CosmicVoyage.MOD_PREFIX, String.format("%.1f", dist));
         }
 
         PoseStack poseStack = event.getPoseStack();

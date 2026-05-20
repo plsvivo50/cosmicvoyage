@@ -1,5 +1,6 @@
 package com.Ray1101.cosmicvoyage.command;
 
+import com.Ray1101.cosmicvoyage.SpaceConstants;
 import com.Ray1101.cosmicvoyage.data.SpaceData;
 import com.Ray1101.cosmicvoyage.space.SpaceState;
 import com.mojang.brigadier.CommandDispatcher;
@@ -63,11 +64,12 @@ public class CvSpaceCommand {
                                     }
 
                                     // 保存返回锚点到当前维度
-                                    SpaceData.get(player.serverLevel()).setAnchor(
+                                    SpaceData.get(player.serverLevel()).setEarthAnchor(
                                             player.getX(), player.getY(), player.getZ()
                                     );
 
-                                    player.teleportTo(spaceLevel, 0, 200, 0,
+                                    player.teleportTo(spaceLevel,
+                                            SpaceConstants.SPACE_ENTRY_POS.x, SpaceConstants.SPACE_ENTRY_POS.y, SpaceConstants.SPACE_ENTRY_POS.z,
                                             player.getYRot(), player.getXRot());
                                     SpaceState.enterSpace(player.getUUID());
 
@@ -92,7 +94,7 @@ public class CvSpaceCommand {
 
                                     // ✅ 修复：player.server → player.getServer()
                                     var data = SpaceData.get(player.getServer().overworld());
-                                    if (!data.hasAnchor()) {
+                                    if (!data.hasEarthAnchor()) {
                                         context.getSource().sendFailure(
                                                 Component.literal("§cNo return anchor found."));
                                         return 0;
@@ -100,7 +102,7 @@ public class CvSpaceCommand {
 
                                     player.teleportTo(
                                             player.getServer().overworld(),
-                                            data.getX(), data.getY(), data.getZ(),
+                                            data.getEarthX(), data.getEarthY(), data.getEarthZ(),
                                             player.getYRot(), player.getXRot()
                                     );
                                     SpaceState.exitSpace(player.getUUID());
@@ -136,7 +138,7 @@ public class CvSpaceCommand {
                                 .executes(context -> {
                                     var player = context.getSource().getPlayerOrException();
                                     var data = SpaceData.get(player.serverLevel());
-                                    data.setAnchor(player.getX(), player.getY(), player.getZ());
+                                    data.setEarthAnchor(player.getX(), player.getY(), player.getZ());
 
                                     context.getSource().sendSuccess(
                                             () -> Component.literal("§aAnchor set!"),
@@ -151,14 +153,14 @@ public class CvSpaceCommand {
                                     var player = context.getSource().getPlayerOrException();
                                     var data = SpaceData.get(player.serverLevel());
 
-                                    if (!data.hasAnchor()) {
+                                    if (!data.hasEarthAnchor()) {
                                         context.getSource().sendFailure(
                                                 Component.literal("§cNo anchor set!"));
                                         return 0;
                                     }
 
                                     player.connection.teleport(
-                                            data.getX(), data.getY(), data.getZ(),
+                                            data.getEarthX(), data.getEarthY(), data.getEarthZ(),
                                             player.getYRot(), player.getXRot()
                                     );
 

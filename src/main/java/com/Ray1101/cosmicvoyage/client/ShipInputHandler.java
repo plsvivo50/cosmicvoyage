@@ -1,8 +1,13 @@
 package com.Ray1101.cosmicvoyage.client;
 
 import com.Ray1101.cosmicvoyage.CosmicVoyage;
+import com.Ray1101.cosmicvoyage.dimension.ModDimensions;
+import com.Ray1101.cosmicvoyage.network.packet.ReturnToSpacePacket;
+import com.Ray1101.cosmicvoyage.SpaceConstants;
 import com.Ray1101.cosmicvoyage.entity.ShipEntity;
 import com.Ray1101.cosmicvoyage.network.CosmicVoyagePacketHandler;
+import com.Ray1101.cosmicvoyage.network.packet.LaunchToSpacePacket;
+import com.Ray1101.cosmicvoyage.network.packet.ShipSyncPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.MouseHandler;
 import net.minecraft.world.level.Level;
@@ -12,7 +17,9 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ComputeFovModifierEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.fml.common.Mod;
+import com.mojang.blaze3d.platform.InputConstants;
 
 @Mod.EventBusSubscriber(modid = CosmicVoyage.MOD_ID, value = Dist.CLIENT)
 public class ShipInputHandler {
@@ -21,11 +28,25 @@ public class ShipInputHandler {
     private static final int SYNC_INTERVAL = 3;
     private static int launchCooldown = 0;
 
+    // P1-4：下降键独立 KeyMapping（原用 LeftCtrl / keySprint，现独立注册避免冲突）
+    public static final net.minecraft.client.KeyMapping KEY_DESCEND = new net.minecraft.client.KeyMapping(
+            "key.cosmicvoyage.descend",
+            InputConstants.Type.KEYSYM,
+            InputConstants.KEY_LCONTROL,
+            "key.category.cosmicvoyage"
+    );
+
     // === 6DoF 重构：鼠标跟踪 ===
     private static double lastMouseX = 0;
     private static double lastMouseY = 0;
     private static boolean mouseInitialized = false;
     private static final float MOUSE_SENSITIVITY = 0.15f;
+
+    // P1-4：注册下降键 KeyMapping
+    @SubscribeEvent
+    public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
+        event.register(KEY_DESCEND);
+    }
 
     // === 问题3修复：三层防御 ===
     // 根因不明：按住空格时原版某处周期性设 sprinting=true。
@@ -66,6 +87,9 @@ public class ShipInputHandler {
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
 
+        // P2-3：GUI 打开时暂停飞船物理（防止背包/菜单打开时飞船继续飞行）
+        if (Minecraft.getInstance().screen != null) return;
+
         Minecraft mc = Minecraft.getInstance();
 
         // 未骑乘时重置鼠标状态
@@ -74,12 +98,21 @@ public class ShipInputHandler {
             return;
         }
 
-        // === 主世界高度检测：y>=300 自动发射到太空（冻结）===
-        if (mc.level.dimension().equals(Level.OVERWORLD) && mc.player.getY() >= 300.0) {
+        // === 主世界高度检测：y>=LAUNCH_HEIGHT 自动发射到太空（冻结）===
+        if (mc.level.dimension().equals(Level.OVERWORLD) && mc.player.getY() >= SpaceConstants.LAUNCH_HEIGHT) {
             if (launchCooldown <= 0) {
                 launchCooldown = 100;
                 CosmicVoyagePacketHandler.INSTANCE.sendToServer(
-                        new CosmicVoyagePacketHandler.LaunchToSpacePacket()
+                        new LaunchToSpacePacket()
+                );
+            }
+        }
+        // === P1-5：月球维度 y>=MOON_ESCAPE_HEIGHT 自动返回太空 ===
+        if (mc.level.dimension().equals(ModDimensions.MOON) && mc.player.getY() >= SpaceConstants.MOON_ESCAPE_HEIGHT) {
+            if (launchCooldown <= 0) {
+                launchCooldown = 100;
+                CosmicVoyagePacketHandler.INSTANCE.sendToServer(
+                        new ReturnToSpacePacket()
                 );
             }
         }
@@ -87,9 +120,9 @@ public class ShipInputHandler {
 
         if (ship.isAutoLanding) return;
 
-        // === 下降键：Left Ctrl（冻结）===
+        // P1-4：下降键使用独立 KeyMapping（原 keySprint / LeftCtrl）
         boolean up = mc.options.keyJump.isDown();
-        boolean down = mc.options.keySprint.isDown();
+        boolean down = KEY_DESCEND.isDown();
 
         if (up) {
             mc.player.input.jumping = false;
@@ -128,14 +161,14 @@ public class ShipInputHandler {
         );
 
         // === 6DoF 重构：同步玩家摄像机到飞船姿态 ===
-        mc.player.setYRot(ship.getYRot());
+        mc.player.setYRot(net.minecraft.util.Mth.wrapDegrees(ship.getYRot()));
         mc.player.yRotO = ship.yRotO;
         mc.player.setXRot(ship.getXRot());
         mc.player.xRotO = ship.xRotO;
 
         // === 同步玩家位置到飞船（冻结，不动）===
         double targetX = ship.getX();
-        double targetY = ship.getY() + ship.getPassengersRidingOffset() + 0.8;
+        double targetY = ship.getY() + ship.getPassengersRidingOffset() + SpaceConstants.SHIP_PASSENGER_OFFSET_Y;
         double targetZ = ship.getZ();
 
         if (mc.player.distanceToSqr(targetX, targetY, targetZ) > 0.25) {
@@ -151,7 +184,7 @@ public class ShipInputHandler {
         if (syncTick >= SYNC_INTERVAL) {
             syncTick = 0;
             CosmicVoyagePacketHandler.INSTANCE.sendToServer(
-                    new CosmicVoyagePacketHandler.ShipSyncPacket(ship)
+                    new ShipSyncPacket(ship)
             );
         }
     }

@@ -23,6 +23,8 @@ import net.minecraftforge.common.MinecraftForge;
 public class CosmicVoyage {
 
     public static final String MOD_ID = "cosmicvoyage";
+    /** 日志/消息前缀常量，所有 [CosmicVoyage] 前缀统一使用此值 */
+    public static final String MOD_PREFIX = "[CosmicVoyage] ";
     private static final Logger LOGGER = LogUtils.getLogger();
 
     public CosmicVoyage(FMLJavaModLoadingContext context) {
@@ -41,7 +43,7 @@ public class CosmicVoyage {
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
-        LOGGER.info("[CosmicVoyage] Core initialized");
+        LOGGER.info(MOD_PREFIX + "Core initialized");
     }
 
     @SubscribeEvent
