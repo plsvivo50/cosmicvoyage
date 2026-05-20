@@ -7,6 +7,9 @@ import net.minecraftforge.common.ForgeConfigSpec;
  *
  * <p>P1-2：飞船物理参数从硬编码迁移到 Config，
  * 支持不同维度/行星的不同物理特性（未来扩展）。
+ *
+ * <p>Config-Constant 连接：所有默认值从 {@link SpaceConstants} 读取，
+ * 调整 SpaceConstants 时 Config 默认值自动同步。
  */
 public class Config {
 
@@ -22,7 +25,7 @@ public class Config {
 
     public static final ForgeConfigSpec.DoubleValue FLIGHT_ACCELERATION = BUILDER
             .comment("Ship acceleration multiplier")
-            .defineInRange("flightAcceleration", 0.5, 0.01, 5.0);
+            .defineInRange("flightAcceleration", SpaceConstants.FORCE_MAIN, 0.01, 5.0);
 
     // =========================
     // Gravity System
@@ -42,35 +45,36 @@ public class Config {
 
     // =========================
     // Ship Physics (P1-2)
+    // 默认值全部从 SpaceConstants 读取，确保单一源头
     // =========================
 
     public static final ForgeConfigSpec.DoubleValue FORCE_MAIN = BUILDER
             .comment("Main engine thrust force")
-            .defineInRange("forceMain", 0.5, 0.1, 5.0);
+            .defineInRange("forceMain", SpaceConstants.FORCE_MAIN, 0.1, 5.0);
 
     public static final ForgeConfigSpec.DoubleValue FORCE_VERTICAL = BUILDER
             .comment("Vertical thrust force (up/down)")
-            .defineInRange("forceVertical", 0.3, 0.1, 2.0);
+            .defineInRange("forceVertical", SpaceConstants.FORCE_VERTICAL, 0.1, 2.0);
 
     public static final ForgeConfigSpec.DoubleValue DAMPING = BUILDER
             .comment("Velocity damping factor per tick")
-            .defineInRange("damping", 0.015, 0.001, 0.1);
+            .defineInRange("damping", SpaceConstants.DAMPING, 0.001, 0.1);
 
     public static final ForgeConfigSpec.DoubleValue MAX_SPEED_TICK = BUILDER
             .comment("Maximum speed per tick (blocks/tick)")
-            .defineInRange("maxSpeedTick", 25.0, 5.0, 100.0);
+            .defineInRange("maxSpeedTick", SpaceConstants.MAX_SPEED_TICK, 5.0, 100.0);
 
     public static final ForgeConfigSpec.DoubleValue YAW_SPEED = BUILDER
             .comment("Yaw rotation speed")
-            .defineInRange("yawSpeed", 2.5, 0.5, 10.0);
+            .defineInRange("yawSpeed", SpaceConstants.YAW_SPEED, 0.5, 10.0);
 
     public static final ForgeConfigSpec.DoubleValue COLLISION_DAMPING = BUILDER
             .comment("Velocity retention after collision (0.3 = 30%)")
-            .defineInRange("collisionDamping", 0.3, 0.1, 0.9);
+            .defineInRange("collisionDamping", SpaceConstants.COLLISION_DAMPING, 0.1, 0.9);
 
     public static final ForgeConfigSpec.DoubleValue SIDE_THRUST_RATIO = BUILDER
             .comment("Side/back thrust ratio relative to main (0.5 = 50%)")
-            .defineInRange("sideThrustRatio", 0.5, 0.1, 1.0);
+            .defineInRange("sideThrustRatio", SpaceConstants.SIDE_THRUST_RATIO, 0.1, 1.0);
 
     // =========================
     // FINAL SPEC

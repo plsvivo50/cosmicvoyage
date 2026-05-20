@@ -86,7 +86,7 @@ public class MoonTransitionPacket {
 
                 newShip.moveTo(SpaceConstants.MOON_ENTRY_POS.x, SpaceConstants.MOON_ENTRY_POS.y, SpaceConstants.MOON_ENTRY_POS.z, yaw, 0.0f);
                 // P0-1：使用 setter 替代直接字段访问
-                newShip.setShipVelocity(entryVelocity.scale(0.5));
+                newShip.setShipVelocity(entryVelocity.scale(SpaceConstants.ENTRY_VELOCITY_SCALE));
                 newShip.setDeltaMovement(newShip.getShipVelocity());
                 newShip.hasImpulse = true;
 

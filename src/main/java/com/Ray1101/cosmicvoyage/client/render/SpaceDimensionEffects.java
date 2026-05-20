@@ -1,4 +1,4 @@
-package com.Ray1101.cosmicvoyage.client;
+package com.Ray1101.cosmicvoyage.client.render;
 
 import net.minecraft.client.renderer.DimensionSpecialEffects;
 import net.minecraft.world.phys.Vec3;

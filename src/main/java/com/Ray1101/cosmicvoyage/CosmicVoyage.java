@@ -3,7 +3,7 @@ package com.Ray1101.cosmicvoyage;
 import com.Ray1101.cosmicvoyage.entity.ModEntities;
 import com.Ray1101.cosmicvoyage.network.CosmicVoyagePacketHandler;
 import com.mojang.logging.LogUtils;
-import com.Ray1101.cosmicvoyage.client.SpaceDimensionEffects;
+import com.Ray1101.cosmicvoyage.client.render.SpaceDimensionEffects;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RegisterDimensionSpecialEffectsEvent;
 import net.minecraftforge.eventbus.api.IEventBus;

@@ -86,7 +86,7 @@ public class LandOnEarthPacket {
                 ShipEntity newShip = (ShipEntity) shipType.create(overworld);
                 if (newShip != null) {
                     newShip.moveTo(targetX, safeY, targetZ, yaw, 0.0f);
-                    newShip.setShipVelocity(entryVelocity.scale(0.5));
+                    newShip.setShipVelocity(entryVelocity.scale(SpaceConstants.ENTRY_VELOCITY_SCALE));
                     newShip.setDeltaMovement(newShip.getShipVelocity());
                     newShip.hasImpulse = true;
 

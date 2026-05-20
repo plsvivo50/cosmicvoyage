@@ -1,4 +1,4 @@
-package com.Ray1101.cosmicvoyage.client;
+package com.Ray1101.cosmicvoyage.client.render;
 
 import com.Ray1101.cosmicvoyage.CosmicVoyage;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -19,13 +19,10 @@ import org.slf4j.LoggerFactory;
 public class VT1Renderer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(VT1Renderer.class);
-    /** 开发模式开关：生产环境设为 false 禁用调试渲染 */
-    private static final boolean DEV_MODE = false;
     private static final BlockPos TEST_POS = new BlockPos(1_000_000, 200, 0);
 
     @SubscribeEvent
     public static void onRenderWorld(RenderLevelStageEvent event) {
-        if (!DEV_MODE) return; // 生产环境禁用调试渲染
         // 1.20.1 Forge 标准阶段
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_SOLID_BLOCKS) {
             return;

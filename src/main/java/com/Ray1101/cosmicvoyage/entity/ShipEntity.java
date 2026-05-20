@@ -151,7 +151,7 @@ public class ShipEntity extends Entity {
         // 禁止在此处赋值 xRotO/yRotO。
 
         float newPitch = this.getXRot() + pitchDelta;
-        newPitch = Mth.clamp(newPitch, -89.9f, 89.9f);
+        newPitch = Mth.clamp(newPitch, -SpaceConstants.PITCH_CLAMP, SpaceConstants.PITCH_CLAMP);
         this.setXRot(newPitch);
 
         float newYaw = this.getYRot() + yawDelta;
@@ -211,7 +211,7 @@ public class ShipEntity extends Entity {
 
     @Override
     public void lerpTo(double x, double y, double z, float yaw, float pitch, int steps, boolean teleport) {
-        if (teleport || this.distanceToSqr(x, y, z) > 10000.0) {
+        if (teleport || this.distanceToSqr(x, y, z) > SpaceConstants.TELEPORT_THRESHOLD) {
             this.setPos(x, y, z);
             this.setYRot(yaw);
             this.setXRot(pitch);
@@ -220,7 +220,7 @@ public class ShipEntity extends Entity {
 
     @Override
     public void absMoveTo(double x, double y, double z, float yaw, float pitch) {
-        if (this.distanceToSqr(x, y, z) > 10000.0) {
+        if (this.distanceToSqr(x, y, z) > SpaceConstants.TELEPORT_THRESHOLD) {
             super.absMoveTo(x, y, z, yaw, pitch);
         }
     }
@@ -262,7 +262,7 @@ public class ShipEntity extends Entity {
 
     @Override
     public Vec3 getDismountLocationForPassenger(LivingEntity livingEntity) {
-        return new Vec3(this.getX(), this.getY() + 1.5, this.getZ());
+        return new Vec3(this.getX(), this.getY() + SpaceConstants.DISMOUNT_OFFSET_Y, this.getZ());
     }
 
     @Override public boolean isPickable() { return !this.isRemoved(); }

@@ -1,4 +1,4 @@
-package com.Ray1101.cosmicvoyage.client;
+package com.Ray1101.cosmicvoyage.client.input;
 
 import com.Ray1101.cosmicvoyage.CosmicVoyage;
 import com.Ray1101.cosmicvoyage.dimension.ModDimensions;
@@ -41,6 +41,8 @@ public class ShipInputHandler {
     private static double lastMouseY = 0;
     private static boolean mouseInitialized = false;
     private static final float MOUSE_SENSITIVITY = 0.15f;
+    /** 位置同步距离阈值：偏差超过此值才发送同步包 */
+    private static final double SYNC_DISTANCE_THRESHOLD = 0.25;
 
     // P1-4：注册下降键 KeyMapping
     @SubscribeEvent
@@ -171,7 +173,7 @@ public class ShipInputHandler {
         double targetY = ship.getY() + ship.getPassengersRidingOffset() + SpaceConstants.SHIP_PASSENGER_OFFSET_Y;
         double targetZ = ship.getZ();
 
-        if (mc.player.distanceToSqr(targetX, targetY, targetZ) > 0.25) {
+        if (mc.player.distanceToSqr(targetX, targetY, targetZ) > SYNC_DISTANCE_THRESHOLD) {
             mc.player.setPos(targetX, targetY, targetZ);
             mc.player.xOld = targetX;
             mc.player.yOld = targetY;

@@ -1,4 +1,4 @@
-package com.Ray1101.cosmicvoyage.client;
+package com.Ray1101.cosmicvoyage.client.render;
 
 import com.Ray1101.cosmicvoyage.CosmicVoyage;
 import com.Ray1101.cosmicvoyage.dimension.ModDimensions;

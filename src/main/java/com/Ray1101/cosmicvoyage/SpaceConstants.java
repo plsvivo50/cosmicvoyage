@@ -35,9 +35,33 @@ public final class SpaceConstants {
     /** 月球在太空坐标系中的水平距离。 */
     public static final float MOON_DISTANCE = 12000.0f;
 
-    // ===== 飞船物理参数 =====
-    /** 飞船乘客 Y 轴偏移量，用于骑乘时摄像机位置计算。 */
+    // ===== 维度切换参数 =====
+    /** 传送后速度缩放因子（维度切换后保留的速度比例） */
+    public static final double ENTRY_VELOCITY_SCALE = 0.5;
+
+    // ===== 飞船物理参数（Config 默认值源头） =====
+    /** 主推力 */
+    public static final double FORCE_MAIN = 0.5;
+    /** 垂直推力 */
+    public static final double FORCE_VERTICAL = 0.3;
+    /** 速度阻尼（每 tick） */
+    public static final double DAMPING = 0.015;
+    /** 最大速度（blocks/tick） */
+    public static final double MAX_SPEED_TICK = 25.0;
+    /** 偏航速度 */
+    public static final double YAW_SPEED = 2.5;
+    /** 碰撞后速度保留比例 */
+    public static final double COLLISION_DAMPING = 0.3;
+    /** 侧向/后退推力比例 */
+    public static final double SIDE_THRUST_RATIO = 0.5;
+    /** 飞船乘客 Y 轴偏移量 */
     public static final double SHIP_PASSENGER_OFFSET_Y = 0.8;
+    /** Pitch 限制角度（防止万向节锁） */
+    public static final float PITCH_CLAMP = 89.9f;
+    /** 传送位置偏差阈值 */
+    public static final double TELEPORT_THRESHOLD = 10000.0;
+    /** 下马位置偏移 */
+    public static final double DISMOUNT_OFFSET_Y = 1.5;
 
     // ===== 发射参数 =====
     /** 主世界自动发射到太空的高度阈值 */
@@ -70,7 +94,18 @@ public final class SpaceConstants {
             0.0
     );
 
-    // ===== HUD LOD 阈值 =====
+    // ===== 渲染 LOD 阈值 =====
     /** 距离小于此值时隐藏 HUD 导航箭头，让 3D 球体接管视觉引导。 */
     public static final float HUD_HIDE_DISTANCE = EARTH_RADIUS * 3.0f;      // 600.0f
+
+    // 渲染 LOD 阈值设计原则：TRIGGER_LAND_* < RENDER_LOD_NEAR
+    // 确保完整球体在维度切换之前显示，玩家能看到渲染效果
+    /** 渲染 LOD 远距离阈值：> 此距离显示 Billboard 光点 */
+    public static final double RENDER_LOD_FAR = 8000.0;
+    /** 渲染 LOD 中距离阈值：< 此距离显示低模线框球体 */
+    public static final double RENDER_LOD_MID = 2000.0;
+    /** 渲染 LOD 近距离阈值：< 此距离显示完整球体+大气 */
+    public static final double RENDER_LOD_NEAR = 1000.0;
+    // 数值关系：RENDER_LOD_FAR > RENDER_LOD_MID > RENDER_LOD_NEAR > TRIGGER_LAND_EARTH
+    // 玩家飞来时：Billboard → 低模球体 → 完整球体 → 球内指示器 → 维度切换
 }
